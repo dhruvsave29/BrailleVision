@@ -1,0 +1,36 @@
+R_DEF: Internal format may change without notice
+local
+drawable ic_launcher_background
+drawable ic_launcher_foreground
+mipmap ic_launcher
+mipmap ic_launcher_round
+string about
+string app_name
+string auto_save_history
+string auto_speak
+string camera_permission_denied
+string capture
+string characters
+string clear_all
+string confidence
+string copy
+string corrected
+string flash
+string gallery
+string history
+string model_info
+string no_braille_detected
+string no_history
+string original
+string pitch
+string processing
+string recognized_text
+string retake
+string save
+string settings
+string show_guide
+string speak
+string speech_rate
+string spell_correction
+string version
+style Theme.BrailleVision
