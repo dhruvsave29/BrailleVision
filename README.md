@@ -1,112 +1,125 @@
 # BrailleVision
 
-Offline braille-to-text recognition with on-device YOLOv8 ML model and text-to-speech.
+> Offline braille-to-text recognition for Android, powered by an on-device YOLOv8-nano TFLite model and spoken back with Text-to-Speech.
 
-- **Android**: API 24+ (Android 7.0+)
-- **Model**: 96.76% mAP@50
-- **ML**: YOLOv8-nano (TFLite)
+BrailleVision is an accessibility-first Android app that captures braille images, runs detection fully on-device, decodes the result into text, optionally spell-corrects it, and speaks it aloud. Everything works offline for privacy, field reliability, and low-latency use.
 
-[Features](#features) - [Technical Details](#technical-details) - [Building](#building)
+## Highlights
 
-BrailleVision is a completely offline Android application that captures braille text images using the device camera, converts them to text using an on-device YOLOv8-nano ML model (TensorFlow Lite), and speaks the recognized text aloud using Android's text-to-speech engine.
+- Fully offline ML pipeline, from camera capture to TTS
+- YOLOv8-nano TFLite model with 320x320 RGB input and `[1, 30, 2100]` output
+- 26-class alphabet support (`a` to `z`)
+- CameraX capture with EXIF-aware rotation handling
+- Compose-based navigation and UI
+- Room history persistence and DataStore-backed settings
+- Neo-brutalist visual language with sharp edges, thick borders, and yellow accents
+
+## How It Works
+
+1. The app captures a braille image with CameraX or loads one from the gallery.
+2. The bitmap is rotated and preprocessed for the model input size.
+3. `YoloDetector` runs on CPU using 4 threads and parses the transposed model output.
+4. Detected braille is converted to text, then optionally spell-corrected with `SymSpell`.
+5. The final text can be saved to history and spoken aloud with TTS.
+
+> [!NOTE]
+> No cloud services are used. Recognition, decoding, settings, history, and speech all work on-device.
 
 ## Features
 
-- **Offline Braille Recognition** - On-device ML model, no internet connection required
-- **Camera Integration** - Capture braille text using CameraX with flash and gallery support
-- **Text-to-Speech** - Speak recognized text aloud with adjustable rate and pitch
-- **History** - Save and review past recognitions with Room database
-- **Settings** - Customize behavior with DataStore preferences:
-  - Auto-speak after recognition
-  - Camera guide overlay
-  - Auto-save to history
-  - Spell correction
+- Camera capture with flash and gallery support
+- On-device braille detection using `best_float32.tflite`
+- Real detection results only, no demo or placeholder data
+- Spell correction toggle for post-processing
+- TTS playback with adjustable rate and pitch
+- History screen powered by Room
+- Persistent settings with DataStore
 
-## Technical Details
+## Model Details
 
-- **ML Model**: YOLOv8-nano (Ultralytics)
-- **Input Size**: 320x320 pixels
-- **Output Shape**: [1, 30, 2100] (transposed format: features, boxes)
-- **Classes**: 26 (a-z English letters)
-- **Accuracy**: 96.76% mAP@50 on test set
-- **Inference**: CPU with 4 threads (no GPU delegate for compatibility)
-- **TFLite**: Full integer quantization, no GPU delegate
-- **Target**: Android API 24+ (Android 7.0 Nougat)
+- **Model**: YOLOv8-nano TFLite
+- **Input**: `320 x 320 x 3` RGB
+- **Output**: `[1, 30, 2100]`
+- **Classes**: 26 letters
+- **Runtime**: CPU only
+- **Threads**: 4
+- **Format**: float32 `.tflite`
 
-### Architecture
+The model and label file live in:
 
+- `app/src/main/assets/best_float32.tflite`
+- `app/src/main/assets/labels.txt`
+
+`labels.txt` should contain exactly 26 lines, one per class.
+
+## Project Structure
+
+```text
+app/src/main/java/com/braillevision/v2/
+|-- BrailleVisionApp.kt
+|-- navigation/NavGraph.kt
+|-- data/
+|   |-- local/HistoryDao.kt, HistoryEntity.kt
+|   |-- preferences/PreferencesManager.kt
+|   |-- spell/SymSpell.kt
+|   `-- tflite/YoloDetector.kt
+|-- domain/
+|   |-- model/RecognitionResult.kt
+|   `-- usecase/SaveHistoryUseCase.kt
+|-- di/
+|   |-- AppModule.kt
+|   |-- DatabaseModule.kt
+|   `-- TFLiteModule.kt
+`-- ui/
+    |-- camera/
+    |-- result/
+    |-- history/
+    `-- settings/
 ```
-UI Layer (Jetpack Compose + Material3)
-Domain Layer (Use Cases: SpeakText, SaveHistory)
-Data Layer (TFLite YoloDetector, Room HistoryDB, DataStore Preferences)
-```
+
+## Settings
+
+Settings are persisted with DataStore and reflected immediately in the UI.
+
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `autoSpeak` | `false` | Speak results automatically after recognition |
+| `speechRate` | `1.0` | Control TTS speaking speed |
+| `pitch` | `1.0` | Control TTS pitch |
+| `showGuide` | `true` | Display the camera alignment guide |
+| `autoSaveHistory` | `false` | Save detections to history automatically |
+| `spellCorrection` | `true` | Enable SymSpell post-processing |
 
 ## Getting Started
 
 ### Prerequisites
 
-- Android Studio Jellyfish or later
-- Android SDK 35
-- Gradle 8.9+
-- Java 17
+- Android Studio
+- Android SDK with a compatible build setup
+- A device or emulator for testing
 
-### Project Structure
-
-```
-BrailleVisionV2/
-├── app/src/main/
-│   ├── java/com/braillevision/v2/
-│   │   ├── data/           # TFLite, Room, DataStore
-│   │   ├── di/             # Hilt dependency injection
-│   │   ├── domain/         # Use cases and models
-│   │   ├── ui/              # Compose screens
-│   │   └── navigation/      # Navigation graph
-│   └── assets/
-│       ├── best_float32.tflite  # ML model (11.6 MB)
-│       └── labels.txt            # Class labels
-├── build.gradle.kts
-└── settings.gradle.kts
-```
-
-## Building
+### Build
 
 ```bash
-git clone https://github.com/dhruvsave29/BrailleVision.git
-cd BrailleVision
-./gradlew.bat assembleDebug
+./gradlew assembleDebug
 ```
 
-APK: `app/build/outputs/apk/debug/app-debug.apk`
+On Windows PowerShell:
 
-## Usage
+```powershell
+.\gradlew.bat assembleDebug
+```
 
-1. **Capture** - Point camera at braille text and tap capture
-2. **Recognize** - Image processed locally with TFLite
-3. **Speak** - Text spoken aloud (if auto-speak enabled)
-4. **History** - Past recognitions saved in History screen
+### Install
 
-### Settings
+Install the generated debug APK from:
 
-- **Speech Rate** - TTS speed (0.5x - 2.0x)
-- **Pitch** - TTS pitch (0.5 - 2.0)
-- **Auto-speak** - Auto read after recognition
-- **Guide Overlay** - Camera alignment guide
-- **Auto-save** - Save to history automatically
-- **Spell Correction** - SymSpell algorithm
+```text
+app/build/outputs/apk/debug/app-debug.apk
+```
 
-## Tech Stack
+## Notes
 
-- **Language**: Kotlin 2.0
-- **UI**: Jetpack Compose + Material3
-- **Architecture**: MVVM + Clean Architecture
-- **DI**: Hilt
-- **ML**: TensorFlow Lite
-- **Min SDK**: 24 (Android 7.0)
-- **Target SDK**: 35
-- **Database**: Room
-- **Camera**: CameraX
-- **Preferences**: DataStore
-
----
-
-Built with accessibility in mind. BrailleVision helps visually impaired users read braille text through camera capture and text-to-speech.
+- The app is designed to work entirely offline.
+- Avoid changing model input, EXIF rotation, or NMS logic without validating with real images.
+- The repository is structured to keep settings in DataStore and history in Room, not in transient UI state.
