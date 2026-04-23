@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.net.Uri
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -45,6 +46,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -154,7 +156,8 @@ private fun LoadingContent() {
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = stringResource(R.string.processing),
-            style = MaterialTheme.typography.titleMedium
+            style = MaterialTheme.typography.titleMedium,
+            color = Black
         )
     }
 }
@@ -195,7 +198,8 @@ private fun NoResultsContent(
     ) {
         Text(
             text = stringResource(R.string.no_braille_detected),
-            style = MaterialTheme.typography.titleLarge
+            style = MaterialTheme.typography.titleLarge,
+            color = Black
         )
         Spacer(modifier = Modifier.height(24.dp))
         NeoTextButton(
@@ -252,7 +256,7 @@ private fun ResultContent(
     
     NeoCard(
         modifier = Modifier.fillMaxWidth(),
-        backgroundColor = OffWhite
+        backgroundColor = Cream
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -261,7 +265,9 @@ private fun ResultContent(
             Text(
                 text = "\"$correctedText\"",
                 style = MaterialTheme.typography.headlineMedium,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                color = Black,
+                fontWeight = FontWeight.Bold
             )
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -285,7 +291,7 @@ private fun ResultContent(
     if (originalText != correctedText) {
         Spacer(modifier = Modifier.height(12.dp))
         
-        NeoCard(
+NeoCard(
             modifier = Modifier.fillMaxWidth(),
             backgroundColor = Cream
         ) {
@@ -295,7 +301,9 @@ private fun ResultContent(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = stringResource(R.string.original),
-                        style = MaterialTheme.typography.labelMedium
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Black,
+                        fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
@@ -304,9 +312,9 @@ private fun ResultContent(
                         color = Black.copy(alpha = 0.6f)
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.Check,
@@ -318,7 +326,8 @@ private fun ResultContent(
                     Text(
                         text = stringResource(R.string.corrected),
                         style = MaterialTheme.typography.labelMedium,
-                        color = Success
+                        color = Success,
+                        fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
@@ -378,7 +387,8 @@ private fun StatItem(
         Text(
             text = value,
             style = MaterialTheme.typography.headlineMedium,
-            color = Black
+            color = Black,
+            fontWeight = FontWeight.Bold
         )
         Text(
             text = label,

@@ -407,9 +407,9 @@ public final class DaggerBrailleVisionApp_HiltComponents_SingletonC {
 
       static String com_braillevision_v2_ui_result_ResultViewModel = "com.braillevision.v2.ui.result.ResultViewModel";
 
-      static String com_braillevision_v2_ui_camera_CameraViewModel = "com.braillevision.v2.ui.camera.CameraViewModel";
-
       static String com_braillevision_v2_ui_history_HistoryViewModel = "com.braillevision.v2.ui.history.HistoryViewModel";
+
+      static String com_braillevision_v2_ui_camera_CameraViewModel = "com.braillevision.v2.ui.camera.CameraViewModel";
 
       @KeepFieldType
       SettingsViewModel com_braillevision_v2_ui_settings_SettingsViewModel2;
@@ -418,10 +418,10 @@ public final class DaggerBrailleVisionApp_HiltComponents_SingletonC {
       ResultViewModel com_braillevision_v2_ui_result_ResultViewModel2;
 
       @KeepFieldType
-      CameraViewModel com_braillevision_v2_ui_camera_CameraViewModel2;
+      HistoryViewModel com_braillevision_v2_ui_history_HistoryViewModel2;
 
       @KeepFieldType
-      HistoryViewModel com_braillevision_v2_ui_history_HistoryViewModel2;
+      CameraViewModel com_braillevision_v2_ui_camera_CameraViewModel2;
     }
   }
 
@@ -475,9 +475,9 @@ public final class DaggerBrailleVisionApp_HiltComponents_SingletonC {
 
       static String com_braillevision_v2_ui_result_ResultViewModel = "com.braillevision.v2.ui.result.ResultViewModel";
 
-      static String com_braillevision_v2_ui_history_HistoryViewModel = "com.braillevision.v2.ui.history.HistoryViewModel";
-
       static String com_braillevision_v2_ui_camera_CameraViewModel = "com.braillevision.v2.ui.camera.CameraViewModel";
+
+      static String com_braillevision_v2_ui_history_HistoryViewModel = "com.braillevision.v2.ui.history.HistoryViewModel";
 
       @KeepFieldType
       SettingsViewModel com_braillevision_v2_ui_settings_SettingsViewModel2;
@@ -486,10 +486,10 @@ public final class DaggerBrailleVisionApp_HiltComponents_SingletonC {
       ResultViewModel com_braillevision_v2_ui_result_ResultViewModel2;
 
       @KeepFieldType
-      HistoryViewModel com_braillevision_v2_ui_history_HistoryViewModel2;
+      CameraViewModel com_braillevision_v2_ui_camera_CameraViewModel2;
 
       @KeepFieldType
-      CameraViewModel com_braillevision_v2_ui_camera_CameraViewModel2;
+      HistoryViewModel com_braillevision_v2_ui_history_HistoryViewModel2;
     }
 
     private static final class SwitchingProvider<T> implements Provider<T> {

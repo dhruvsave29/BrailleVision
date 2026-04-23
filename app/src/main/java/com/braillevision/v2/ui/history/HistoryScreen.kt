@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -156,7 +157,8 @@ private fun EmptyHistoryContent(
         
         Text(
             text = stringResource(R.string.no_history),
-            style = MaterialTheme.typography.headlineMedium
+            style = MaterialTheme.typography.headlineMedium,
+            color = Black
         )
         
         Spacer(modifier = Modifier.height(8.dp))
@@ -186,7 +188,7 @@ private fun HistoryItemCard(
     
     NeoCard(
         modifier = Modifier.fillMaxWidth(),
-        backgroundColor = OffWhite
+        backgroundColor = Cream
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -194,6 +196,8 @@ private fun HistoryItemCard(
             Text(
                 text = "\"${item.correctedText}\"",
                 style = MaterialTheme.typography.titleLarge,
+                color = Black,
+                fontWeight = FontWeight.Bold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
