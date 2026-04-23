@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BrailleVision — See Braille. Speak Words. Break Barriers.</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --yellow: #FFE600;
+    --red: #FF2D2D;
+    --bg: #080808;
+    --bg2: #111111;
+    --bg3: #1a1a1a;
+    --white: #F5F0E8;
+    --muted: #888;
+    --border: #222;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--white);
+    font-family: var(--mono);
+    cursor: none;
+    overflow-x: hidden;
+  }
+
+  /* CUSTOM CURSOR */
+  #cursor {
+    position: fixed; width: 12px; height: 12px;
+    background: var(--yellow); border-radius: 50%;
+    pointer-events: none; z-index: 9999;
+    transform: translate(-50%, -50%);
+    transition: width .2s, height .2s, background .2s;
+    mix-blend-mode: difference;
+  }
+  #cursor-ring {
+    position: fixed; width: 36px; height: 36px;
+    border: 1.5px solid var(--yellow);
+    border-radius: 50%; pointer-events: none; z-index: 9998;
+    transform: translate(-50%, -50%);
+    transition: all .12s ease-out;
+    opacity: .5;
+  }
+  body:hover #cursor { width: 14px; height: 14px; }
+
+  /* SCANLINE OVERLAY */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.08) 2px, rgba(0,0,0,.08) 4px);
+    pointer-events: none; z-index: 9000;
+  }
+
+  /* CANVAS BACKGROUND */
+  #bg-canvas {
+    position: fixed; inset: 0; z-index: 0;
+    opacity: .18;
+  }
+
+  /* NOISE GRAIN */
+  body::after {
+    content: '';
+    position: fixed; inset: -50%;
+    width: 200%; height: 200%;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");
+    opacity: .04; pointer-events: none; z-index: 9001;
+  }
+
+  /* LAYOUT */
+  .container { max-width: 960px; margin: 0 auto; padding: 0 2rem; position: relative; z-index: 10; }
+
+  /* ========== HERO ========== */
+  #hero {
+    min-height: 100vh; display: flex; flex-direction: column;
+    justify-content: center; padding: 6rem 0 4rem;
+    position: relative; overflow: hidden;
+  }
+
+  .hero-eyebrow {
+    font-family: var(--mono); font-size: .75rem; letter-spacing: .3em;
+    color: var(--yellow); text-transform: uppercase; margin-bottom: 2rem;
+    opacity: 0; animation: fadeUp .6s .2s forwards;
+  }
+
+  .hero-title {
+    font-family: var(--sans); font-size: clamp(3.5rem, 10vw, 8rem);
+    font-weight: 800; line-height: .92;
+    margin-bottom: 1.5rem;
+    opacity: 0; animation: fadeUp .7s .4s forwards;
+  }
+  .hero-title .line1 { display: block; color: var(--yellow); }
+  .hero-title .line2 { display: block; color: var(--white); }
+
+  .hero-title .glitch {
+    position: relative; display: inline-block;
+  }
+  .hero-title .glitch::before,
+  .hero-title .glitch::after {
+    content: attr(data-text);
+    position: absolute; left: 0; top: 0;
+    width: 100%; height: 100%;
+  }
+  .hero-title .glitch::before {
+    color: var(--red); clip-path: polygon(0 0, 100% 0, 100% 33%, 0 33%);
+    transform: translateX(-3px);
+    animation: glitch1 4s infinite steps(1);
+  }
+  .hero-title .glitch::after {
+    color: #00f7ff; clip-path: polygon(0 66%, 100% 66%, 100% 100%, 0 100%);
+    transform: translateX(3px);
+    animation: glitch2 4s infinite steps(1);
+  }
+
+  @keyframes glitch1 {
+    0%,89%,91%,100% { transform: translateX(0); opacity: 0; }
+    90% { transform: translateX(-4px); opacity: 1; }
+  }
+  @keyframes glitch2 {
+    0%,89%,91%,100% { transform: translateX(0); opacity: 0; }
+    90% { transform: translateX(4px); opacity: 1; }
+  }
+
+  .hero-sub {
+    font-size: clamp(1rem, 2.5vw, 1.3rem); color: var(--muted);
+    max-width: 560px; line-height: 1.7; margin-bottom: 3rem;
+    opacity: 0; animation: fadeUp .7s .6s forwards;
+  }
+  .hero-sub strong { color: var(--white); font-weight: 500; }
+
+  .hero-badges {
+    display: flex; flex-wrap: wrap; gap: .75rem; margin-bottom: 3rem;
+    opacity: 0; animation: fadeUp .7s .8s forwards;
+  }
+  .badge {
+    font-family: var(--mono); font-size: .7rem; letter-spacing: .1em;
+    padding: .4rem .9rem; border: 1.5px solid var(--border);
+    background: var(--bg2); color: var(--muted);
+    text-transform: uppercase; position: relative; overflow: hidden;
+    transition: all .3s;
+  }
+  .badge::before {
+    content: ''; position: absolute; inset: 0;
+    background: var(--yellow); transform: translateX(-101%);
+    transition: transform .3s ease;
+  }
+  .badge:hover::before { transform: translateX(0); }
+  .badge span { position: relative; z-index: 1; }
+  .badge:hover span { color: var(--bg); }
+  .badge.accent { border-color: var(--yellow); color: var(--yellow); }
+  .badge.accent:hover span { color: var(--bg); }
+
+  .hero-cta {
+    display: flex; align-items: center; gap: 2rem;
+    opacity: 0; animation: fadeUp .7s 1s forwards;
+  }
+  .btn-primary {
+    font-family: var(--mono); font-size: .85rem; letter-spacing: .1em;
+    text-transform: uppercase; padding: .9rem 2.5rem;
+    background: var(--yellow); color: var(--bg);
+    border: 2px solid var(--yellow); font-weight: 700;
+    text-decoration: none; transition: all .25s;
+    position: relative; overflow: hidden;
+  }
+  .btn-primary:hover { background: transparent; color: var(--yellow); transform: translate(-3px, -3px); box-shadow: 3px 3px 0 var(--yellow); }
+
+  .hero-stat {
+    font-family: var(--mono); font-size: .8rem; color: var(--muted);
+  }
+  .hero-stat strong { color: var(--yellow); font-size: 1.5rem; font-weight: 700; display: block; }
+
+  .hero-scroll {
+    position: absolute; bottom: 2.5rem; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: .5rem;
+    color: var(--muted); font-size: .65rem; letter-spacing: .2em;
+    text-transform: uppercase; animation: bounce 2s infinite;
+    opacity: 0; animation: fadeIn 1s 2s forwards, bounce 2s 3s infinite;
+  }
+  .scroll-line {
+    width: 1px; height: 50px; background: linear-gradient(var(--yellow), transparent);
+    animation: scrollLine 1.5s infinite;
+  }
+  @keyframes scrollLine {
+    0% { transform: scaleY(0); transform-origin: top; }
+    50% { transform: scaleY(1); transform-origin: top; }
+    51% { transform: scaleY(1); transform-origin: bottom; }
+    100% { transform: scaleY(0); transform-origin: bottom; }
+  }
+
+  /* ========== SECTION HEADERS ========== */
+  .section { padding: 6rem 0; position: relative; }
+  .section + .section { border-top: 1px solid var(--border); }
+
+  .section-label {
+    font-size: .65rem; letter-spacing: .4em; text-transform: uppercase;
+    color: var(--yellow); margin-bottom: 1rem; display: flex; align-items: center; gap: .75rem;
+  }
+  .section-label::before { content: '//'; opacity: .5; }
+
+  .section-title {
+    font-family: var(--sans); font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 800; line-height: 1.1; margin-bottom: 1.5rem;
+  }
+
+  /* ========== REVEAL ANIMATION ========== */
+  .reveal {
+    opacity: 0; transform: translateY(40px);
+    transition: opacity .7s ease, transform .7s ease;
+  }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+  .reveal-delay-1 { transition-delay: .1s; }
+  .reveal-delay-2 { transition-delay: .2s; }
+  .reveal-delay-3 { transition-delay: .3s; }
+  .reveal-delay-4 { transition-delay: .4s; }
+  .reveal-delay-5 { transition-delay: .5s; }
+
+  /* ========== STATS STRIP ========== */
+  #stats {
+    background: var(--yellow); padding: 2.5rem 0;
+    overflow: hidden; position: relative; z-index: 10;
+  }
+  .stats-track {
+    display: flex; gap: 0;
+  }
+  .stat-item {
+    display: flex; align-items: center; gap: 2.5rem;
+    padding: 0 3rem; border-right: 2px solid rgba(0,0,0,.15);
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .stat-num {
+    font-family: var(--sans); font-size: 2.8rem; font-weight: 800;
+    color: var(--bg); line-height: 1;
+  }
+  .stat-label {
+    font-family: var(--mono); font-size: .7rem; font-weight: 700;
+    color: rgba(0,0,0,.6); text-transform: uppercase; letter-spacing: .1em;
+    max-width: 90px; line-height: 1.4;
+  }
+
+  /* ========== FLOW SECTION ========== */
+  .flow-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 0; margin-top: 4rem;
+  }
+  .flow-step {
+    padding: 2.5rem 2rem; border: 1px solid var(--border);
+    border-right: none; position: relative;
+    transition: background .3s;
+  }
+  .flow-step:last-child { border-right: 1px solid var(--border); }
+  .flow-step:hover { background: var(--bg2); }
+  .flow-step::after {
+    content: '→';
+    position: absolute; right: -14px; top: 50%;
+    transform: translateY(-50%); z-index: 2;
+    color: var(--yellow); font-size: 1.1rem;
+    background: var(--bg);
+  }
+  .flow-step:last-child::after { display: none; }
+  .flow-num {
+    font-size: .65rem; letter-spacing: .3em; color: var(--muted);
+    text-transform: uppercase; margin-bottom: 1.2rem;
+  }
+  .flow-icon {
+    font-size: 2rem; margin-bottom: 1rem; display: block;
+    filter: grayscale(1) brightness(1.5);
+    transition: filter .3s;
+  }
+  .flow-step:hover .flow-icon { filter: none; }
+  .flow-title {
+    font-family: var(--sans); font-size: 1.2rem; font-weight: 700;
+    margin-bottom: .5rem;
+  }
+  .flow-desc { font-size: .78rem; color: var(--muted); line-height: 1.6; }
+
+  /* ========== CAPABILITIES ========== */
+  .caps-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 0; margin-top: 4rem;
+  }
+  .cap-card {
+    padding: 2.5rem; border: 1px solid var(--border);
+    border-right: none; border-bottom: none;
+    transition: all .3s; position: relative; overflow: hidden;
+  }
+  .cap-card:nth-child(3n) { border-right: 1px solid var(--border); }
+  .cap-card:nth-child(n+4) { border-bottom: 1px solid var(--border); }
+  .cap-card::before {
+    content: ''; position: absolute; inset: 0;
+    background: var(--yellow); transform: translateY(101%);
+    transition: transform .4s cubic-bezier(.16,1,.3,1); z-index: 0;
+  }
+  .cap-card:hover::before { transform: translateY(0); }
+  .cap-card:hover { color: var(--bg); }
+  .cap-card:hover .cap-muted { color: rgba(0,0,0,.6); }
+  .cap-card:hover .cap-tag { background: rgba(0,0,0,.15); color: var(--bg); border-color: rgba(0,0,0,.2); }
+  .cap-card > * { position: relative; z-index: 1; }
+  .cap-icon { font-size: 1.8rem; margin-bottom: 1.2rem; display: block; }
+  .cap-title {
+    font-family: var(--sans); font-size: 1.1rem; font-weight: 700;
+    margin-bottom: .6rem;
+  }
+  .cap-desc { font-size: .8rem; line-height: 1.6; margin-bottom: 1.2rem; }
+  .cap-muted { color: var(--muted); transition: color .3s; }
+  .cap-tag {
+    display: inline-block; font-size: .65rem; letter-spacing: .1em;
+    text-transform: uppercase; padding: .25rem .7rem;
+    border: 1px solid var(--border); color: var(--yellow);
+    border-color: rgba(255,230,0,.3); background: rgba(255,230,0,.05);
+    transition: all .3s;
+  }
+
+  /* ========== ML MODEL ========== */
+  .ml-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4rem;
+    align-items: start; margin-top: 4rem;
+  }
+  .ml-visual {
+    position: relative;
+  }
+  .ml-accuracy {
+    font-family: var(--sans); font-size: 8rem; font-weight: 800;
+    color: var(--yellow); line-height: 1; margin-bottom: .5rem;
+    position: relative;
+  }
+  .ml-accuracy-label {
+    font-size: .7rem; letter-spacing: .3em; text-transform: uppercase; color: var(--muted);
+    margin-bottom: 3rem;
+  }
+  .ml-bars { display: flex; flex-direction: column; gap: .75rem; }
+  .ml-bar-row { display: flex; align-items: center; gap: 1rem; }
+  .ml-bar-label { font-size: .7rem; width: 60px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .ml-bar-track {
+    flex: 1; height: 4px; background: var(--border); position: relative;
+  }
+  .ml-bar-fill {
+    height: 100%; background: var(--yellow); width: 0;
+    transition: width 1.5s cubic-bezier(.16,1,.3,1);
+    position: relative;
+  }
+  .ml-bar-fill::after {
+    content: attr(data-val); position: absolute; right: 0; top: -18px;
+    font-size: .65rem; color: var(--yellow); white-space: nowrap;
+  }
+  .ml-specs { display: flex; flex-direction: column; gap: 1.5rem; }
+  .ml-spec-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding-bottom: 1.5rem; border-bottom: 1px solid var(--border);
+  }
+  .ml-spec-row:last-child { border-bottom: none; }
+  .ml-spec-key { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+  .ml-spec-val { font-family: var(--sans); font-size: 1.1rem; font-weight: 700; }
+  .ml-spec-val.accent { color: var(--yellow); }
+
+  /* ========== ARCHITECTURE ========== */
+  .arch-diagram {
+    margin-top: 4rem; border: 1px solid var(--border);
+    background: var(--bg2); padding: 3rem; font-family: var(--mono);
+  }
+  .arch-layer {
+    margin-bottom: 0; border: 1px solid var(--border);
+    position: relative; overflow: hidden;
+  }
+  .arch-layer + .arch-layer { border-top: none; }
+  .arch-layer-label {
+    font-size: .6rem; letter-spacing: .3em; text-transform: uppercase;
+    color: var(--yellow); padding: .5rem 1rem;
+    background: rgba(255,230,0,.05); border-bottom: 1px solid rgba(255,230,0,.1);
+  }
+  .arch-layer-content {
+    padding: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap;
+  }
+  .arch-box {
+    padding: .6rem 1.2rem; border: 1px solid var(--border);
+    font-size: .75rem; color: var(--white); background: var(--bg);
+    transition: all .3s; position: relative; overflow: hidden;
+  }
+  .arch-box::before {
+    content: ''; position: absolute; bottom: 0; left: 0;
+    height: 2px; width: 0; background: var(--yellow);
+    transition: width .3s;
+  }
+  .arch-box:hover::before { width: 100%; }
+  .arch-box:hover { border-color: var(--yellow); color: var(--yellow); }
+
+  .arch-connector {
+    display: flex; justify-content: center; padding: .75rem 0;
+    position: relative;
+  }
+  .arch-connector::before {
+    content: ''; position: absolute; top: 0; left: 50%;
+    width: 1px; height: 100%; background: var(--border);
+  }
+  .arch-connector span {
+    background: var(--bg2); padding: 0 1rem; position: relative;
+    z-index: 1; font-size: .65rem; color: var(--muted);
+  }
+
+  /* ========== SETTINGS TABLE ========== */
+  .settings-table {
+    width: 100%; border-collapse: collapse; margin-top: 3rem;
+    font-family: var(--mono); font-size: .8rem;
+  }
+  .settings-table th {
+    text-align: left; padding: .9rem 1.2rem;
+    font-size: .65rem; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--yellow); border-bottom: 1px solid var(--border);
+    font-weight: 500;
+  }
+  .settings-table td {
+    padding: 1rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,.04);
+    vertical-align: middle;
+  }
+  .settings-table tr { transition: background .2s; }
+  .settings-table tr:hover td { background: var(--bg2); }
+  .settings-table tr:last-child td { border-bottom: none; }
+  .setting-key { color: var(--yellow); font-weight: 500; }
+  .setting-default {
+    display: inline-block; padding: .2rem .6rem;
+    background: rgba(255,255,255,.05); font-size: .7rem; color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .setting-range { color: var(--muted); font-size: .75rem; }
+
+  /* ========== FILE TREE ========== */
+  .file-tree {
+    font-family: var(--mono); font-size: .78rem; line-height: 2;
+    padding: 2.5rem; background: var(--bg2); border: 1px solid var(--border);
+    margin-top: 3rem; color: var(--muted);
+  }
+  .file-tree .dir { color: var(--white); font-weight: 500; }
+  .file-tree .file { color: var(--muted); }
+  .file-tree .file.important { color: var(--yellow); }
+  .file-tree .comment { color: #3a3a3a; }
+
+  /* ========== ROADMAP ========== */
+  .roadmap-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+    background: var(--border); border: 1px solid var(--border);
+    margin-top: 4rem;
+  }
+  .roadmap-item {
+    padding: 2rem; background: var(--bg); display: flex;
+    gap: 1.2rem; align-items: flex-start; transition: background .2s;
+    position: relative; overflow: hidden;
+  }
+  .roadmap-item:hover { background: var(--bg2); }
+  .roadmap-item::after {
+    content: 'SOON';
+    position: absolute; top: 1rem; right: 1rem;
+    font-size: .55rem; letter-spacing: .2em; color: var(--muted);
+    padding: .2rem .5rem; border: 1px solid var(--border);
+  }
+  .roadmap-item.done::after { content: 'LIVE'; color: var(--yellow); border-color: rgba(255,230,0,.3); }
+  .roadmap-check {
+    width: 18px; height: 18px; border: 1.5px solid var(--border);
+    flex-shrink: 0; margin-top: 2px; display: flex; align-items: center;
+    justify-content: center; transition: all .3s;
+  }
+  .roadmap-item:hover .roadmap-check { border-color: var(--yellow); }
+  .roadmap-item.done .roadmap-check { border-color: var(--yellow); background: var(--yellow); }
+  .roadmap-item.done .roadmap-check::after { content: '✓'; color: var(--bg); font-size: .7rem; font-weight: 700; }
+  .roadmap-title { font-family: var(--sans); font-size: 1rem; font-weight: 700; margin-bottom: .4rem; }
+  .roadmap-desc { font-size: .75rem; color: var(--muted); line-height: 1.6; }
+
+  /* ========== THEME PALETTE ========== */
+  .palette-row {
+    display: flex; gap: 0; margin-top: 3rem; border: 1px solid var(--border);
+  }
+  .swatch {
+    flex: 1; padding: 2rem 1rem; text-align: center;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    align-items: center; gap: .5rem; min-height: 120px;
+  }
+  .swatch-label { font-size: .65rem; letter-spacing: .1em; text-transform: uppercase; }
+  .swatch-hex { font-size: .7rem; opacity: .7; }
+
+  /* ========== TECH STACK ========== */
+  .tech-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 1px; background: var(--border); border: 1px solid var(--border);
+    margin-top: 3rem;
+  }
+  .tech-card {
+    padding: 2rem; background: var(--bg);
+    transition: all .3s; text-decoration: none; color: inherit;
+    display: block;
+  }
+  .tech-card:hover { background: var(--yellow); color: var(--bg); }
+  .tech-name {
+    font-family: var(--sans); font-size: 1rem; font-weight: 700;
+    margin-bottom: .4rem;
+  }
+  .tech-role { font-size: .72rem; color: var(--muted); line-height: 1.5; }
+  .tech-card:hover .tech-role { color: rgba(0,0,0,.6); }
+
+  /* ========== FOOTER ========== */
+  footer {
+    border-top: 1px solid var(--border); padding: 4rem 0;
+    text-align: center; position: relative; z-index: 10;
+  }
+  .footer-tagline {
+    font-family: var(--sans); font-size: clamp(1.8rem, 4vw, 3rem);
+    font-weight: 800; line-height: 1.2; margin-bottom: 2rem;
+  }
+  .footer-tagline .accent { color: var(--yellow); }
+  .footer-meta { font-size: .75rem; color: var(--muted); letter-spacing: .1em; }
+  .footer-links { display: flex; justify-content: center; gap: 2rem; margin-top: 2rem; }
+  .footer-link {
+    font-size: .7rem; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--muted); text-decoration: none; transition: color .2s;
+  }
+  .footer-link:hover { color: var(--yellow); }
+
+  /* ========== QUICK INSTALL ========== */
+  .install-block {
+    background: var(--bg2); border: 1px solid var(--border);
+    padding: 2.5rem; margin-top: 4rem; position: relative;
+  }
+  .install-block::before {
+    content: 'bash'; position: absolute; top: 1rem; right: 1.5rem;
+    font-size: .65rem; letter-spacing: .2em; color: var(--muted);
+    text-transform: uppercase;
+  }
+  .install-block pre {
+    font-family: var(--mono); font-size: .85rem; line-height: 2.2;
+    color: var(--white); overflow-x: auto;
+  }
+  .install-block .cmd-line { display: flex; gap: 1rem; align-items: baseline; }
+  .install-block .cmd-prompt { color: var(--yellow); user-select: none; }
+  .install-block .cmd-comment { color: #3d3d3d; font-size: .8rem; }
+  .install-block .cmd-text { color: var(--white); }
+
+  /* ========== ANIMATIONS ========== */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; } to { opacity: 1; }
+  }
+  @keyframes bounce {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(8px); }
+  }
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  .marquee-animate { animation: marquee 20s linear infinite; }
+
+  /* ========== DIVIDERS ========== */
+  .divider {
+    display: flex; align-items: center; gap: 1rem;
+    margin: 5rem 0; color: var(--border);
+  }
+  .divider::before, .divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+  .divider span { font-size: .65rem; letter-spacing: .4em; color: var(--muted); text-transform: uppercase; }
+
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    .flow-grid, .caps-grid, .tech-grid { grid-template-columns: 1fr 1fr; }
+    .ml-grid, .roadmap-grid { grid-template-columns: 1fr; }
+    .cap-card:nth-child(3n) { border-right: none; }
+    .cap-card:nth-child(2n) { border-right: 1px solid var(--border); }
+    .cap-card:nth-child(n+3) { border-bottom: 1px solid var(--border); }
+    .hero-title { font-size: 3.2rem; }
+    .flow-step::after { display: none; }
+  }
+  @media (max-width: 480px) {
+    .flow-grid, .caps-grid, .tech-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+<canvas id="bg-canvas"></canvas>
+
+<!-- ========== HERO ========== -->
+<section id="hero">
+  <div class="container">
+    <p class="hero-eyebrow">// v2.0 — Production Ready · Fully Offline</p>
+    <h1 class="hero-title">
+      <span class="line1"><span class="glitch" data-text="Braille">Braille</span></span>
+      <span class="line2">Vision</span>
+    </h1>
+    <p class="hero-sub">
+      <strong>Point. Capture. Hear.</strong> An Android app that reads braille using on-device YOLOv8-nano — no cloud, no server, no compromise. Just your camera and a model that <strong>actually works offline</strong>.
+    </p>
+    <div class="hero-badges">
+      <div class="badge accent"><span>96.76% mAP@50</span></div>
+      <div class="badge"><span>Android API 24+</span></div>
+      <div class="badge"><span>Kotlin 1.9+</span></div>
+      <div class="badge"><span>TensorFlow Lite</span></div>
+      <div class="badge"><span>Jetpack Compose</span></div>
+      <div class="badge"><span>MIT License</span></div>
+    </div>
+    <div class="hero-cta">
+      <a href="https://github.com/your-username/BrailleVisionV2" class="btn-primary">Clone Repo →</a>
+      <div class="hero-stat">
+        <strong id="hero-counter">0</strong>
+        classes detected
+      </div>
+    </div>
+  </div>
+  <div class="hero-scroll">
+    <div class="scroll-line"></div>
+    <span>scroll</span>
+  </div>
+</section>
+
+<!-- ========== STATS TICKER ========== -->
+<div id="stats">
+  <div class="stats-track marquee-animate">
+    <div class="stat-item"><div class="stat-num">96.76%</div><div class="stat-label">mAP@50 accuracy</div></div>
+    <div class="stat-item"><div class="stat-num">26</div><div class="stat-label">braille classes</div></div>
+    <div class="stat-item"><div class="stat-num">11.6MB</div><div class="stat-label">model size</div></div>
+    <div class="stat-item"><div class="stat-num">320px</div><div class="stat-label">input resolution</div></div>
+    <div class="stat-item"><div class="stat-num">4T</div><div class="stat-label">CPU threads</div></div>
+    <div class="stat-item"><div class="stat-num">100%</div><div class="stat-label">offline operation</div></div>
+    <div class="stat-item"><div class="stat-num">0</div><div class="stat-label">cloud dependencies</div></div>
+    <div class="stat-item"><div class="stat-num">96.76%</div><div class="stat-label">mAP@50 accuracy</div></div>
+    <div class="stat-item"><div class="stat-num">26</div><div class="stat-label">braille classes</div></div>
+    <div class="stat-item"><div class="stat-num">11.6MB</div><div class="stat-label">model size</div></div>
+    <div class="stat-item"><div class="stat-num">320px</div><div class="stat-label">input resolution</div></div>
+    <div class="stat-item"><div class="stat-num">4T</div><div class="stat-label">CPU threads</div></div>
+    <div class="stat-item"><div class="stat-num">100%</div><div class="stat-label">offline operation</div></div>
+    <div class="stat-item"><div class="stat-num">0</div><div class="stat-label">cloud dependencies</div></div>
+  </div>
+</div>
+
+<!-- ========== HOW IT WORKS ========== -->
+<section class="section">
+  <div class="container">
+    <div class="reveal">
+      <p class="section-label">How it works</p>
+      <h2 class="section-title">From lens to language<br/>in four steps.</h2>
+    </div>
+    <div class="flow-grid">
+      <div class="flow-step reveal reveal-delay-1">
+        <div class="flow-num">01 / Capture</div>
+        <span class="flow-icon">📷</span>
+        <div class="flow-title">Camera</div>
+        <div class="flow-desc">CameraX captures the frame. Flash assist, guide overlay, or import from gallery. Full control.</div>
+      </div>
+      <div class="flow-step reveal reveal-delay-2">
+        <div class="flow-num">02 / Detect</div>
+        <span class="flow-icon">🤖</span>
+        <div class="flow-title">YOLOv8-nano</div>
+        <div class="flow-desc">On-device TFLite model detects all 26 braille letters at 320×320 with 96.76% mAP@50.</div>
+      </div>
+      <div class="flow-step reveal reveal-delay-3">
+        <div class="flow-num">03 / Refine</div>
+        <span class="flow-icon">🔤</span>
+        <div class="flow-title">SymSpell</div>
+        <div class="flow-desc">Post-processing spell correction cleans detection artifacts. Smart dictionary lookup.</div>
+      </div>
+      <div class="flow-step reveal reveal-delay-4">
+        <div class="flow-num">04 / Speak</div>
+        <span class="flow-icon">🔊</span>
+        <div class="flow-title">TTS Engine</div>
+        <div class="flow-desc">Android TTS reads the text aloud. Adjustable rate and pitch. Auto-speak option available.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== CAPABILITIES ========== -->
+<section class="section">
+  <div class="container">
+    <div class="reveal">
+      <p class="section-label">Capabilities</p>
+      <h2 class="section-title">Everything you need.<br/>Nothing you don't.</h2>
+    </div>
+    <div class="caps-grid">
+      <div class="cap-card reveal reveal-delay-1">
+        <span class="cap-icon">🧠</span>
+        <div class="cap-title">On-Device ML</div>
+        <p class="cap-desc cap-muted">YOLOv8-nano runs entirely on CPU with 4 threads. No GPU required. No internet required. Zero latency from network calls.</p>
+        <span class="cap-tag">TFLite · CPU</span>
+      </div>
+      <div class="cap-card reveal reveal-delay-2">
+        <span class="cap-icon">🔒</span>
+        <div class="cap-title">Privacy First</div>
+        <p class="cap-desc cap-muted">Your images never leave the device. No analytics, no telemetry, no cloud processing. What you scan stays with you.</p>
+        <span class="cap-tag">100% Offline</span>
+      </div>
+      <div class="cap-card reveal reveal-delay-3">
+        <span class="cap-icon">🏗️</span>
+        <div class="cap-title">Clean Architecture</div>
+        <p class="cap-desc cap-muted">MVVM pattern with Hilt DI, Use Cases for domain logic, Room for persistence, DataStore for prefs. Built to scale.</p>
+        <span class="cap-tag">MVVM · Hilt</span>
+      </div>
+      <div class="cap-card reveal reveal-delay-1">
+        <span class="cap-icon">📷</span>
+        <div class="cap-title">Smart Camera</div>
+        <p class="cap-desc cap-muted">CameraX integration with flash control, alignment guide overlay, and gallery import. Works in any lighting.</p>
+        <span class="cap-tag">CameraX</span>
+      </div>
+      <div class="cap-card reveal reveal-delay-2">
+        <span class="cap-icon">🗃️</span>
+        <div class="cap-title">Persistent History</div>
+        <p class="cap-desc cap-muted">Room database saves every scan. DataStore persists user preferences. Your scan history survives app restarts.</p>
+        <span class="cap-tag">Room · DataStore</span>
+      </div>
+      <div class="cap-card reveal reveal-delay-3">
+        <span class="cap-icon">🎨</span>
+        <div class="cap-title">Neo-Brutalist UI</div>
+        <p class="cap-desc cap-muted">Jetpack Compose with a sharp, high-contrast design system. Bold. Accessible. Unforgettable. Yellow on black.</p>
+        <span class="cap-tag">Compose</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== ML MODEL ========== -->
+<section class="section">
+  <div class="container">
+    <div class="reveal">
+      <p class="section-label">ML Model</p>
+      <h2 class="section-title">YOLOv8-nano.<br/>Small model, massive accuracy.</h2>
+    </div>
+    <div class="ml-grid">
+      <div class="ml-visual reveal">
+        <div class="ml-accuracy" id="accuracy-counter">0</div>
+        <div class="ml-accuracy-label">mAP@50 — Mean Average Precision</div>
+        <div class="ml-bars">
+          <div class="ml-bar-row">
+            <span class="ml-bar-label">Precision</span>
+            <div class="ml-bar-track"><div class="ml-bar-fill" data-width="96" data-val="96.76%"></div></div>
+          </div>
+          <div class="ml-bar-row">
+            <span class="ml-bar-label">Recall</span>
+            <div class="ml-bar-track"><div class="ml-bar-fill" data-width="94" data-val="94.1%"></div></div>
+          </div>
+          <div class="ml-bar-row">
+            <span class="ml-bar-label">F1 Score</span>
+            <div class="ml-bar-track"><div class="ml-bar-fill" data-width="95" data-val="95.4%"></div></div>
+          </div>
+          <div class="ml-bar-row">
+            <span class="ml-bar-label">Coverage</span>
+            <div class="ml-bar-track"><div class="ml-bar-fill" data-width="100" data-val="26/26 classes"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="ml-specs reveal">
+        <div class="ml-spec-row">
+          <span class="ml-spec-key">Architecture</span>
+          <span class="ml-spec-val accent">YOLOv8-nano</span>
+        </div>
+        <div class="ml-spec-row">
+          <span class="ml-spec-key">Input Size</span>
+          <span class="ml-spec-val">320 × 320 RGB</span>
+        </div>
+        <div class="ml-spec-row">
+          <span class="ml-spec-key">Output Shape</span>
+          <span class="ml-spec-val">[1, 30, 2100]</span>
+        </div>
+        <div class="ml-spec-row">
+          <span class="ml-spec-key">Classes</span>
+          <span class="ml-spec-val">26 (a → z)</span>
+        </div>
+        <div class="ml-spec-row">
+          <span class="ml-spec-key">Inference</span>
+          <span class="ml-spec-val">CPU · 4 threads</span>
+        </div>
+        <div class="ml-spec-row">
+          <span class="ml-spec-key">Format</span>
+          <span class="ml-spec-val">float32 .tflite</span>
+        </div>
+        <div class="ml-spec-row">
+          <span class="ml-spec-key">Model Size</span>
+          <span class="ml-spec-val accent">11.6 MB</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== ARCHITECTURE ========== -->
+<section class="section">
+  <div class="container">
+    <div class="reveal">
+      <p class="section-label">Architecture</p>
+      <h2 class="section-title">Clean layers.<br/>Zero coupling.</h2>
+    </div>
+    <div class="arch-diagram reveal">
+      <div class="arch-layer">
+        <div class="arch-layer-label">▸ UI Layer — Jetpack Compose</div>
+        <div class="arch-layer-content">
+          <div class="arch-box">CameraScreen</div>
+          <div class="arch-box">ResultScreen</div>
+          <div class="arch-box">HistoryScreen</div>
+          <div class="arch-box">SettingsScreen</div>
+          <div class="arch-box">NeoBrutalistComponents</div>
+        </div>
+      </div>
+      <div class="arch-connector"><span>↓ ViewModels + StateFlow</span></div>
+      <div class="arch-layer">
+        <div class="arch-layer-label">▸ Domain Layer — Business Logic</div>
+        <div class="arch-layer-content">
+          <div class="arch-box">SpeakTextUseCase</div>
+          <div class="arch-box">SaveHistoryUseCase</div>
+          <div class="arch-box">Detection.kt</div>
+          <div class="arch-box">RecognitionResult.kt</div>
+        </div>
+      </div>
+      <div class="arch-connector"><span>↓ Repository Pattern</span></div>
+      <div class="arch-layer">
+        <div class="arch-layer-label">▸ Data Layer — Persistence + ML</div>
+        <div class="arch-layer-content">
+          <div class="arch-box">YoloDetector (TFLite)</div>
+          <div class="arch-box">Room DB</div>
+          <div class="arch-box">HistoryDao</div>
+          <div class="arch-box">PreferencesManager</div>
+          <div class="arch-box">SymSpell</div>
+        </div>
+      </div>
+      <div class="arch-connector"><span>↓ Hilt DI — AppModule / DatabaseModule / TFLiteModule</span></div>
+      <div class="arch-layer">
+        <div class="arch-layer-label">▸ Assets — On-Device ML</div>
+        <div class="arch-layer-content">
+          <div class="arch-box" style="border-color:rgba(255,230,0,.4);color:var(--yellow)">best_float32.tflite</div>
+          <div class="arch-box">labels.txt (a–z)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== QUICK INSTALL ========== -->
+<section class="section">
+  <div class="container">
+    <div class="reveal">
+      <p class="section-label">Quick Install</p>
+      <h2 class="section-title">Running in under<br/>two minutes.</h2>
+    </div>
+    <div class="install-block reveal">
+      <pre>
+<div class="cmd-line"><span class="cmd-prompt">$</span> <span class="cmd-text">git clone https://github.com/&lt;your-username&gt;/BrailleVisionV2.git</span></div>
+<div class="cmd-line"><span class="cmd-prompt">$</span> <span class="cmd-text">cd BrailleVisionV2</span></div>
+<div class="cmd-line"></div>
+<div class="cmd-line"><span class="cmd-comment"># Build debug APK</span></div>
+<div class="cmd-line"><span class="cmd-prompt">$</span> <span class="cmd-text">./gradlew assembleDebug</span></div>
+<div class="cmd-line"></div>
+<div class="cmd-line"><span class="cmd-comment"># Flash to device</span></div>
+<div class="cmd-line"><span class="cmd-prompt">$</span> <span class="cmd-text">adb install app/build/outputs/apk/debug/app-debug.apk</span></div>
+      </pre>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SETTINGS ========== -->
+<section class="section">
+  <div class="container">
+    <div class="reveal">
+      <p class="section-label">Configuration</p>
+      <h2 class="section-title">DataStore settings.<br/>No SharedPrefs legacy.</h2>
+    </div>
+    <table class="settings-table reveal">
+      <thead>
+        <tr>
+          <th>Key</th>
+          <th>Default</th>
+          <th>Range</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="setting-key">autoSpeak</span></td><td><span class="setting-default">false</span></td><td class="setting-range">on / off</td><td>Auto-speak text after recognition completes</td></tr>
+        <tr><td><span class="setting-key">speechRate</span></td><td><span class="setting-default">1.0</span></td><td class="setting-range">0.5 – 2.0</td><td>TTS speaking speed multiplier</td></tr>
+        <tr><td><span class="setting-key">pitch</span></td><td><span class="setting-default">1.0</span></td><td class="setting-range">0.5 – 2.0</td><td>TTS voice pitch adjustment</td></tr>
+        <tr><td><span class="setting-key">showGuide</span></td><td><span class="setting-default">true</span></td><td class="setting-range">on / off</td><td>Camera alignment guide overlay</td></tr>
+        <tr><td><span class="setting-key">autoSaveHistory</span></td><td><span class="setting-default">false</span></td><td class="setting-range">on / off</td><td>Auto-save scan results to Room DB</td></tr>
+        <tr><td><span class="setting-key">spellCorrection</span></td><td><span class="setting-default">true</span></td><td class="setting-range">on / off</td><td>SymSpell post-processing correction</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ========== DESIGN SYSTEM ========== -->
+<section class="section">
+  <div class="container">
+    <div class="reveal">
+      <p class="section-label">Design System</p>
+      <h2 class="section-title">Neo-Brutalist.<br/>Bold. Accessible. Functional.</h2>
+    </div>
+    <div class="palette-row reveal">
+      <div class="swatch" style="background:#FFE600; flex: 2;">
+        <span class="swatch-label" style="color:#000">Primary Accent</span>
+        <span class="swatch-hex" style="color:rgba(0,0,0,.6)">#FFE600</span>
+      </div>
+      <div class="swatch" style="background:#080808; border: 1px solid #222;">
+        <span class="swatch-label" style="color:#fff">Background</span>
+        <span class="swatch-hex">#080808</span>
+      </div>
+      <div class="swatch" style="background:#F5F0E8; border: 1px solid #222;">
+        <span class="swatch-label" style="color:#000">Foreground</span>
+        <span class="swatch-hex" style="color:rgba(0,0,0,.5)">#F5F0E8</span>
+      </div>
+      <div class="swatch" style="background:#FF2D2D;">
+        <span class="swatch-label" style="color:#fff">Danger</span>
+        <span class="swatch-hex" style="color:rgba(255,255,255,.7)">#FF2D2D</span>
+      </div>
+      <div class="swatch" style="background:#222; border: 1px solid #333;">
+        <span class="swatch-label" style="color:#888">Border</span>
+        <span class="swatch-hex">#222222</span>
+      </div>
+    </div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:0; border: 1px solid var(--border); border-top: none; margin-top:0;" class="reveal">
+      <div style="padding:1.5rem; border-right: 1px solid var(--border);">
+        <div class="section-label" style="margin-bottom:.5rem">Borders</div>
+        <span style="font-size:.9rem; color:var(--muted)">3dp solid · Sharp · No softness</span>
+      </div>
+      <div style="padding:1.5rem; border-right: 1px solid var(--border);">
+        <div class="section-label" style="margin-bottom:.5rem">Shadows</div>
+        <span style="font-size:.9rem; color:var(--muted)">4dp hard offset · Black only</span>
+      </div>
+      <div style="padding:1.5rem;">
+        <div class="section-label" style="margin-bottom:.5rem">Corners</div>
+        <span style="font-size:.9rem; color:var(--muted)">0dp radius · Sharp · Always</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== ROADMAP ========== -->
+<section class="section">
+  <div class="container">
+    <div class="reveal">
+      <p class="section-label">Roadmap</p>
+      <h2 class="section-title">What's next.<br/>What's coming.</h2>
+    </div>
+    <div class="roadmap-grid">
+      <div class="roadmap-item reveal reveal-delay-1">
+        <div class="roadmap-check"></div>
+        <div>
+          <div class="roadmap-title">Expand SymSpell Dictionary</div>
+          <div class="roadmap-desc">Scale from ~150 words to 10,000+ for dramatically improved post-processing accuracy on real-world braille text.</div>
+        </div>
+      </div>
+      <div class="roadmap-item reveal reveal-delay-2">
+        <div class="roadmap-check"></div>
+        <div>
+          <div class="roadmap-title">Dark Mode Support</div>
+          <div class="roadmap-desc">Full system dark mode integration with Compose theming. Retain the neo-brutalist character in both themes.</div>
+        </div>
+      </div>
+      <div class="roadmap-item reveal reveal-delay-3">
+        <div class="roadmap-check"></div>
+        <div>
+          <div class="roadmap-title">Batch Scanning Mode</div>
+          <div class="roadmap-desc">Multi-page document scanning with automatic stitching. Scan an entire braille book, one page at a time.</div>
+        </div>
+      </div>
+      <div class="roadmap-item reveal reveal-delay-4">
+        <div class="roadmap-check"></div>
+        <div>
+          <div class="roadmap-title">PDF Export</div>
+          <div class="roadmap-desc">Export your recognized text history as a formatted PDF. Share, print, or archive your scan sessions.</div>
+        </div>
+      </div>
+      <div class="roadmap-item reveal reveal-delay-1">
+        <div class="roadmap-check"></div>
+        <div>
+          <div class="roadmap-title">Multi-Language Braille</div>
+          <div class="roadmap-desc">Grade 1 and Grade 2 braille support. International braille alphabet support beyond standard English a–z.</div>
+        </div>
+      </div>
+      <div class="roadmap-item reveal reveal-delay-2">
+        <div class="roadmap-check"></div>
+        <div>
+          <div class="roadmap-title">TalkBack Deep Integration</div>
+          <div class="roadmap-desc">Full Android accessibility service integration. Make BrailleVision a first-class citizen for screen reader users.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== TECH STACK ========== -->
+<section class="section">
+  <div class="container">
+    <div class="reveal">
+      <p class="section-label">Built With</p>
+      <h2 class="section-title">Best-in-class stack.<br/>No compromises.</h2>
+    </div>
+    <div class="tech-grid reveal">
+      <a href="https://github.com/ultralytics/ultralytics" class="tech-card">
+        <div class="tech-name">YOLOv8</div>
+        <div class="tech-role">Object detection model training & export</div>
+      </a>
+      <a href="https://www.tensorflow.org/lite" class="tech-card">
+        <div class="tech-name">TFLite</div>
+        <div class="tech-role">On-device ML inference engine</div>
+      </a>
+      <a href="https://developer.android.com/compose" class="tech-card">
+        <div class="tech-name">Compose</div>
+        <div class="tech-role">Declarative Android UI framework</div>
+      </a>
+      <a href="https://developer.android.com/training/camerax" class="tech-card">
+        <div class="tech-name">CameraX</div>
+        <div class="tech-role">Camera capture & lifecycle management</div>
+      </a>
+      <a href="https://developer.android.com/room" class="tech-card">
+        <div class="tech-name">Room DB</div>
+        <div class="tech-role">SQLite abstraction for scan history</div>
+      </a>
+      <a href="https://dagger.dev/hilt/" class="tech-card">
+        <div class="tech-name">Hilt</div>
+        <div class="tech-role">Dependency injection framework</div>
+      </a>
+      <a href="https://developer.android.com/topic/libraries/architecture/datastore" class="tech-card">
+        <div class="tech-name">DataStore</div>
+        <div class="tech-role">Typed async preferences storage</div>
+      </a>
+      <a href="https://kotlinlang.org" class="tech-card">
+        <div class="tech-name">Kotlin</div>
+        <div class="tech-role">Primary language, coroutines, Flow</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ========== FOOTER ========== -->
+<footer>
+  <div class="container">
+    <div class="footer-tagline reveal">
+      Because everyone deserves<br/>to <span class="accent">read.</span>
+    </div>
+    <div class="footer-meta reveal">
+      Built with Jetpack Compose + TensorFlow Lite &nbsp;·&nbsp; MIT License &nbsp;·&nbsp; v2.0
+    </div>
+    <div class="footer-links reveal">
+      <a href="https://github.com/your-username/BrailleVisionV2" class="footer-link">GitHub</a>
+      <a href="https://github.com/your-username/BrailleVisionV2/issues" class="footer-link">Issues</a>
+      <a href="https://github.com/your-username/BrailleVisionV2/blob/main/LICENSE" class="footer-link">License</a>
+      <a href="https://github.com/ultralytics/ultralytics" class="footer-link">YOLOv8</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Custom cursor
+  const cursor = document.getElementById('cursor');
+  const ring = document.getElementById('cursor-ring');
+  let mx = 0, my = 0, rx = 0, ry = 0;
+  document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; cursor.style.left = mx + 'px'; cursor.style.top = my + 'px'; });
+  function animRing() { rx += (mx - rx) * 0.12; ry += (my - ry) * 0.12; ring.style.left = rx + 'px'; ring.style.top = ry + 'px'; requestAnimationFrame(animRing); }
+  animRing();
+  document.querySelectorAll('a, button, .cap-card, .tech-card, .flow-step').forEach(el => {
+    el.addEventListener('mouseenter', () => { cursor.style.width = '20px'; cursor.style.height = '20px'; ring.style.width = '50px'; ring.style.height = '50px'; });
+    el.addEventListener('mouseleave', () => { cursor.style.width = '12px'; cursor.style.height = '12px'; ring.style.width = '36px'; ring.style.height = '36px'; });
+  });
+
+  // Braille dot background canvas
+  const canvas = document.getElementById('bg-canvas');
+  const ctx = canvas.getContext('2d');
+  function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  const dots = [];
+  const cols = Math.ceil(window.innerWidth / 60);
+  const rows = Math.ceil(window.innerHeight / 60);
+  for (let c = 0; c < cols; c++) {
+    for (let r = 0; r < rows; r++) {
+      const braillePattern = [
+        [0,0],[0,1],[0,2],[1,0],[1,1],[1,2]
+      ];
+      braillePattern.forEach(([dx, dy]) => {
+        if (Math.random() > 0.55) {
+          dots.push({
+            x: c * 60 + dx * 18 + 8,
+            y: r * 60 + dy * 18 + 8,
+            r: 2.5 + Math.random() * 1.5,
+            phase: Math.random() * Math.PI * 2,
+            speed: 0.3 + Math.random() * 0.7,
+            baseAlpha: 0.08 + Math.random() * 0.18
+          });
+        }
+      });
+    }
+  }
+
+  let t = 0;
+  function drawDots() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const scrollY = window.scrollY;
+    t += 0.005;
+    dots.forEach(d => {
+      const alpha = d.baseAlpha * (0.5 + 0.5 * Math.sin(t * d.speed + d.phase));
+      ctx.beginPath();
+      ctx.arc(d.x, d.y - scrollY * 0.02, d.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,230,0,${alpha})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(drawDots);
+  }
+  drawDots();
+
+  // Scroll reveal
+  const revealEls = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.12 });
+  revealEls.forEach(el => observer.observe(el));
+
+  // Counter animation
+  function animCounter(el, target, suffix, duration) {
+    let start = 0; const step = target / (duration / 16);
+    const id = setInterval(() => {
+      start += step;
+      if (start >= target) { start = target; clearInterval(id); }
+      el.textContent = typeof target === 'float' ? start.toFixed(2) + suffix : Math.floor(start) + suffix;
+    }, 16);
+  }
+
+  // Hero counter (26 classes)
+  setTimeout(() => animCounter(document.getElementById('hero-counter'), 26, '', 1000), 1200);
+
+  // Accuracy counter — trigger on scroll
+  const accEl = document.getElementById('accuracy-counter');
+  const accObs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        let v = 0; const target = 96.76;
+        const id = setInterval(() => {
+          v += 1.2;
+          if (v >= target) { v = target; clearInterval(id); }
+          accEl.textContent = v.toFixed(2) + '%';
+        }, 16);
+        accObs.disconnect();
+      }
+    });
+  }, { threshold: 0.3 });
+  accObs.observe(accEl);
+
+  // ML bars — animate on scroll
+  const barObs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        document.querySelectorAll('.ml-bar-fill').forEach(bar => {
+          bar.style.width = bar.dataset.width + '%';
+        });
+        barObs.disconnect();
+      }
+    });
+  }, { threshold: 0.3 });
+  document.querySelector('.ml-bars') && barObs.observe(document.querySelector('.ml-bars'));
+
+  // Parallax for hero on scroll
+  window.addEventListener('scroll', () => {
+    const scrollY = window.scrollY;
+    const hero = document.getElementById('hero');
+    if (hero) {
+      hero.style.transform = `translateY(${scrollY * 0.3}px)`;
+      hero.style.opacity = 1 - scrollY / 600;
+    }
+  });
+</script>
+</body>
+</html>

@@ -4,6 +4,10 @@
 
 BrailleVision is an accessibility-first Android app that captures braille images, runs detection fully on-device, decodes the result into text, optionally spell-corrects it, and speaks it aloud. Everything works offline for privacy, field reliability, and low-latency use.
 
+## HTML Showcase
+
+The animated HTML version of this project lives at [`index.html`](/C:/Users/dhruv/AndroidStudioProjects/BrailleVisionV2/index.html). Once GitHub Pages is enabled, it can also be served as the live site.
+
 ## Highlights
 
 - Fully offline ML pipeline, from camera capture to TTS
